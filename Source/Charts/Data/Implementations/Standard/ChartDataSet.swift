@@ -105,8 +105,40 @@ open class ChartDataSet: ChartBaseDataSet
         let indexTo = entryIndex(x: toX, closestToY: .nan, rounding: .up)
         
         guard indexTo >= indexFrom else { return }
-        // only recalculate y
-        self[indexFrom...indexTo].forEach(calcMinMaxY)
+        calcMinMaxY(fromX: fromX, toX: toX, entries: Array(entries[indexFrom...indexTo]))
+    }
+    
+    private func calcMinMaxY(fromX: Double, toX: Double, entries: [ChartDataEntry]) {
+        if entries.count == 1 {
+            let firstEntry = entries[0]
+            if (firstEntry.x < fromX || firstEntry.x > toX) && label == "data" {
+                return
+            }
+        }
+
+        var entries = Array(entries)
+
+        let lastIndex = entries.count - 1
+        if entries.count > 1 && entries[0].x < fromX {
+            let y = yValue(for: fromX, from: entries[0], and: entries[1])
+            entries.remove(at: 0)
+            entries.insert(ChartDataEntry(x: fromX, y: y), at: 0)
+        }
+        if entries.count > 1 && entries[lastIndex].x > toX {
+            let y = yValue(for: toX, from: entries[lastIndex - 1], and: entries[lastIndex])
+            entries.remove(at: lastIndex)
+            entries.insert(ChartDataEntry(x: toX, y: y), at: lastIndex)
+        }
+
+        for entry in entries {
+            calcMinMaxY(entry: entry)
+        }
+    }
+
+    private func yValue(for x: Double, from entryOne: ChartDataEntry, and entryTwo: ChartDataEntry) -> Double {
+        let m = (entryTwo.y - entryOne.y) / (entryTwo.x - entryOne.x)
+        let b = entryOne.y - (m * entryOne.x)
+        return (m * x) + b
     }
     
     @objc open func calcMinMaxX(entry e: ChartDataEntry)
