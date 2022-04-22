@@ -101,8 +101,10 @@ open class ChartDataSet: ChartBaseDataSet
 
         guard !isEmpty else { return }
         
-        let indexFrom = entryIndex(x: fromX, closestToY: .nan, rounding: .down)
-        let indexTo = entryIndex(x: toX, closestToY: .nan, rounding: .up)
+        var indexFrom = entryIndex(x: fromX, closestToY: .nan, rounding: .down)
+        var indexTo = entryIndex(x: toX, closestToY: .nan, rounding: .up)
+        if indexFrom == -1 { indexFrom = 0 }
+        if indexTo == -1 { indexTo = entries.count - 1 }
         
         guard indexTo >= indexFrom else { return }
         calcMinMaxY(fromX: fromX, toX: toX, entries: Array(entries[indexFrom...indexTo]))
@@ -208,7 +210,7 @@ open class ChartDataSet: ChartBaseDataSet
         {
             return self[index]
         }
-        return nil
+        return entries.last
     }
     
     /// - Parameters:
