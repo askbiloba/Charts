@@ -230,9 +230,10 @@ open class ChartDataSet: ChartBaseDataSet
     /// An empty array if no Entry object at that index.
     open override func entriesForXValue(_ xValue: Double) -> [ChartDataEntry]
     {
-        let i = partitioningIndex(where: { $0.x >= xValue })
-        guard i < endIndex else { return [] }
-        return self[i...].prefix(while: { $0.x == xValue })
+        entries = entries.sorted { $0.x < $1.x }
+        let partitioningIndex = partitioningIndex(where: { $0.x >= xValue })
+        let startIndex = partitioningIndex > 1 ? partitioningIndex - 1 : 0
+        return Array(entries[startIndex...])
     }
     
     /// - Parameters:
