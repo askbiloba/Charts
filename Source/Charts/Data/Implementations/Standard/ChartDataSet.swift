@@ -233,7 +233,7 @@ open class ChartDataSet: ChartBaseDataSet
         entries = entries.sorted { $0.x < $1.x }
         let partitioningIndex = partitioningIndex(where: { $0.x >= xValue })
         let startIndex = partitioningIndex > 1 ? partitioningIndex - 1 : 0
-        return Array(entries[startIndex...])
+        return Array(entries[startIndex...].prefix(2))
     }
     
     /// - Parameters:
