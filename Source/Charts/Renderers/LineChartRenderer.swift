@@ -9,8 +9,8 @@
 //  https://github.com/danielgindi/Charts
 //
 
-import Foundation
 import CoreGraphics
+import Foundation
 
 open class LineChartRenderer: LineRadarRenderer
 {
@@ -29,7 +29,7 @@ open class LineChartRenderer: LineRadarRenderer
         self.dataProvider = dataProvider
     }
     
-    open override func drawData(context: CGContext)
+    override open func drawData(context: CGContext)
     {
         guard let lineData = dataProvider?.lineData else { return }
 
@@ -37,8 +37,13 @@ open class LineChartRenderer: LineRadarRenderer
         assert(sets != nil, "Datasets for LineChartRenderer must conform to ILineChartDataSet")
 
         let drawDataSet = { self.drawDataSet(context: context, dataSet: $0) }
+        // Draw filled datasets first
         sets!.lazy
-            .filter(\.isVisible)
+            .filter { ds in ds.isVisible && ds.isDrawFilledEnabled }
+            .forEach(drawDataSet)
+        // Then draw lines aboved filled zones
+        sets!.lazy
+            .filter { ds in ds.isVisible && !ds.isDrawFilledEnabled }
             .forEach(drawDataSet)
     }
     
@@ -124,7 +129,7 @@ open class LineChartRenderer: LineRadarRenderer
             
             let firstIndex = _xBounds.min + 1
             
-            var prevPrev: ChartDataEntry! = nil
+            var prevPrev: ChartDataEntry!
             var prev: ChartDataEntry! = dataSet.entryForIndex(max(firstIndex - 2, 0))
             var cur: ChartDataEntry! = dataSet.entryForIndex(max(firstIndex - 1, 0))
             var next: ChartDataEntry! = cur
@@ -135,7 +140,7 @@ open class LineChartRenderer: LineRadarRenderer
             // let the spline start
             cubicPath.move(to: CGPoint(x: CGFloat(cur.x), y: CGFloat(cur.y * phaseY)), transform: valueToPixelMatrix)
             
-            for j in _xBounds.dropFirst()  // same as firstIndex
+            for j in _xBounds.dropFirst() // same as firstIndex
             {
                 prevPrev = prev
                 prev = cur
@@ -176,13 +181,16 @@ open class LineChartRenderer: LineRadarRenderer
             drawCubicFill(context: context, dataSet: dataSet, spline: fillPath!, matrix: valueToPixelMatrix, bounds: _xBounds)
         }
 
-        if dataSet.isDrawLineWithGradientEnabled
+        if dataSet.lineWidth > 0
         {
-            drawGradientLine(context: context, dataSet: dataSet, spline: cubicPath, matrix: valueToPixelMatrix)
-        }
-        else
-        {
-            drawLine(context: context, spline: cubicPath, drawingColor: drawingColor)
+            if dataSet.isDrawLineWithGradientEnabled
+            {
+                drawGradientLine(context: context, dataSet: dataSet, spline: cubicPath, matrix: valueToPixelMatrix)
+            }
+            else
+            {
+                drawLine(context: context, spline: cubicPath, drawingColor: drawingColor)
+            }
         }
     }
     
@@ -312,7 +320,7 @@ open class LineChartRenderer: LineRadarRenderer
         _xBounds.set(chart: dataProvider, dataSet: dataSet, animator: animator)
         
         // if drawing filled is enabled
-        if dataSet.isDrawFilledEnabled && entryCount > 0
+        if dataSet.isDrawFilledEnabled, entryCount > 0
         {
             drawLinearFill(context: context, dataSet: dataSet, trans: trans, bounds: _xBounds)
         }
@@ -365,7 +373,7 @@ open class LineChartRenderer: LineRadarRenderer
 
                 _lineSegments = _lineSegments.map { $0.applying(valueToPixelMatrix) }
 
-                if (!viewPortHandler.isInBoundsRight(_lineSegments[0].x))
+                if !viewPortHandler.isInBoundsRight(_lineSegments[0].x)
                 {
                     break
                 }
@@ -391,7 +399,9 @@ open class LineChartRenderer: LineRadarRenderer
         }
         else
         { // only one color per dataset
-            guard dataSet.entryForIndex(_xBounds.min) != nil else {
+            guard dataSet.entryForIndex(_xBounds.min) != nil
+            else
+            {
                 return
             }
 
@@ -439,9 +449,12 @@ open class LineChartRenderer: LineRadarRenderer
             
             if !firstPoint
             {
-                if dataSet.isDrawLineWithGradientEnabled {
+                if dataSet.isDrawLineWithGradientEnabled
+                {
                     drawGradientLine(context: context, dataSet: dataSet, spline: path, matrix: valueToPixelMatrix)
-                } else {
+                }
+                else
+                {
                     context.beginPath()
                     context.addPath(path)
                     context.setStrokeColor(dataSet.color(atIndex: 0).cgColor)
@@ -490,13 +503,13 @@ open class LineChartRenderer: LineRadarRenderer
         }
         
         // create a new path
-        for x in stride(from: (bounds.min + 1), through: bounds.range + bounds.min, by: 1)
+        for x in stride(from: bounds.min + 1, through: bounds.range + bounds.min, by: 1)
         {
             guard let e = dataSet.entryForIndex(x) else { continue }
             
             if isDrawSteppedEnabled
             {
-                guard let ePrev = dataSet.entryForIndex(x-1) else { continue }
+                guard let ePrev = dataSet.entryForIndex(x - 1) else { continue }
                 filled.addLine(to: CGPoint(x: CGFloat(e.x), y: CGFloat(ePrev.y * phaseY)), transform: matrix)
             }
             
@@ -514,7 +527,7 @@ open class LineChartRenderer: LineRadarRenderer
         return filled
     }
     
-    open override func drawValues(context: CGContext)
+    override open func drawValues(context: CGContext)
     {
         guard
             let dataProvider = dataProvider,
@@ -530,8 +543,8 @@ open class LineChartRenderer: LineRadarRenderer
             for i in lineData.indices
             {
                 guard let
-                        dataSet = lineData[i] as? LineChartDataSetProtocol,
-                      shouldDrawValues(forDataSet: dataSet)
+                    dataSet = lineData[i] as? LineChartDataSetProtocol,
+                    shouldDrawValues(forDataSet: dataSet)
                 else { continue }
                 
                 let valueFont = dataSet.valueFont
@@ -563,12 +576,12 @@ open class LineChartRenderer: LineRadarRenderer
                     pt.y = CGFloat(e.y * phaseY)
                     pt = pt.applying(valueToPixelMatrix)
                     
-                    if (!viewPortHandler.isInBoundsRight(pt.x))
+                    if !viewPortHandler.isInBoundsRight(pt.x)
                     {
                         break
                     }
                     
-                    if (!viewPortHandler.isInBoundsLeft(pt.x) || !viewPortHandler.isInBoundsY(pt.y))
+                    if !viewPortHandler.isInBoundsLeft(pt.x) || !viewPortHandler.isInBoundsY(pt.y)
                     {
                         continue
                     }
@@ -599,7 +612,7 @@ open class LineChartRenderer: LineRadarRenderer
         }
     }
     
-    open override func drawExtras(context: CGContext)
+    override open func drawExtras(context: CGContext)
     {
         drawCircles(context: context)
     }
@@ -621,7 +634,8 @@ open class LineChartRenderer: LineRadarRenderer
         accessibilityOrderedElements = accessibilityCreateEmptyOrderedElements()
 
         // Make the chart header the first element in the accessible elements array
-        if let chart = dataProvider as? LineChartView {
+        if let chart = dataProvider as? LineChartView
+        {
             let element = createAccessibleHeader(usingChart: chart,
                                                  andData: lineData,
                                                  withDefaultDescription: "Line Chart")
@@ -666,13 +680,13 @@ open class LineChartRenderer: LineRadarRenderer
                 pt.y = CGFloat(e.y * phaseY)
                 pt = pt.applying(valueToPixelMatrix)
                 
-                if (!viewPortHandler.isInBoundsRight(pt.x))
+                if !viewPortHandler.isInBoundsRight(pt.x)
                 {
                     break
                 }
                 
                 // make sure the circles don't do shitty things outside bounds
-                if (!viewPortHandler.isInBoundsLeft(pt.x) || !viewPortHandler.isInBoundsY(pt.y))
+                if !viewPortHandler.isInBoundsLeft(pt.x) || !viewPortHandler.isInBoundsY(pt.y)
                 {
                     continue
                 }
@@ -690,7 +704,7 @@ open class LineChartRenderer: LineRadarRenderer
                                                           container: chart,
                                                           dataSet: dataSet,
                                                           dataSetIndex: i)
-                    { (element) in
+                    { element in
                         element.accessibilityFrame = accessibilityRect
                     }
 
@@ -743,11 +757,11 @@ open class LineChartRenderer: LineRadarRenderer
         context.restoreGState()
 
         // Merge nested ordered arrays into the single accessibleChartElements.
-        accessibleChartElements.append(contentsOf: accessibilityOrderedElements.flatMap { $0 } )
+        accessibleChartElements.append(contentsOf: accessibilityOrderedElements.flatMap { $0 })
         accessibilityPostLayoutChangedNotification()
     }
     
-    open override func drawHighlighted(context: CGContext, indices: [Highlight])
+    override open func drawHighlighted(context: CGContext, indices: [Highlight])
     {
         guard
             let dataProvider = dataProvider,
@@ -806,7 +820,8 @@ open class LineChartRenderer: LineRadarRenderer
 
     func drawGradientLine(context: CGContext, dataSet: LineChartDataSetProtocol, spline: CGPath, matrix: CGAffineTransform)
     {
-        guard let gradientPositions = dataSet.gradientPositions else
+        guard let gradientPositions = dataSet.gradientPositions
+        else
         {
             assertionFailure("Must set `gradientPositions if `dataSet.isDrawLineWithGradientEnabled` is true")
             return
@@ -819,7 +834,9 @@ open class LineChartRenderer: LineRadarRenderer
         let boundingBox = spline.boundingBox
             .insetBy(dx: -dataSet.lineWidth / 2, dy: -dataSet.lineWidth / 2)
 
-        guard !boundingBox.isNull, !boundingBox.isInfinite, !boundingBox.isEmpty else {
+        guard !boundingBox.isNull, !boundingBox.isInfinite, !boundingBox.isEmpty
+        else
+        {
             return
         }
 
@@ -827,27 +844,33 @@ open class LineChartRenderer: LineRadarRenderer
         let gradientEnd = CGPoint(x: 0, y: boundingBox.maxY)
         let gradientColorComponents: [CGFloat] = dataSet.colors
             .reversed()
-            .reduce(into: []) { (components, color) in
-                guard let (r, g, b, a) = color.nsuirgba else {
+            .reduce(into: [])
+            { components, color in
+                guard let (r, g, b, a) = color.nsuirgba
+                else
+                {
                     return
                 }
                 components += [r, g, b, a]
             }
         let gradientLocations: [CGFloat] = gradientPositions.reversed()
-            .map { (position) in
+            .map
+            { position in
                 let location = CGPoint(x: boundingBox.minX, y: position)
                     .applying(matrix)
                 let normalizedLocation = (location.y - boundingBox.minY)
                     / (boundingBox.maxY - boundingBox.minY)
-                return normalizedLocation.clamped(to: 0...1)
+                return normalizedLocation.clamped(to: 0 ... 1)
             }
 
         let baseColorSpace = CGColorSpaceCreateDeviceRGB()
         guard let gradient = CGGradient(
-                colorSpace: baseColorSpace,
-                colorComponents: gradientColorComponents,
-                locations: gradientLocations,
-                count: gradientLocations.count) else {
+            colorSpace: baseColorSpace,
+            colorComponents: gradientColorComponents,
+            locations: gradientLocations,
+            count: gradientLocations.count)
+        else
+        {
             return
         }
 
@@ -901,7 +924,7 @@ open class LineChartRenderer: LineRadarRenderer
         let dataSetCount = dataProvider.lineData?.dataSetCount ?? -1
         let doesContainMultipleDataSets = dataSetCount > 1
 
-        element.accessibilityLabel = "\(doesContainMultipleDataSets ? (dataSet.label ?? "")  + ", " : "") \(label): \(elementValueText)"
+        element.accessibilityLabel = "\(doesContainMultipleDataSets ? (dataSet.label ?? "") + ", " : "") \(label): \(elementValueText)"
 
         modifier(element)
 
