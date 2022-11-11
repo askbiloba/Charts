@@ -37,8 +37,13 @@ open class LineChartRenderer: LineRadarRenderer
         assert(sets != nil, "Datasets for LineChartRenderer must conform to ILineChartDataSet")
 
         let drawDataSet = { self.drawDataSet(context: context, dataSet: $0) }
+        // Draw filled datasets first
         sets!.lazy
-            .filter(\.isVisible)
+            .filter { ds in ds.isVisible && ds.isDrawFilledEnabled }
+            .forEach(drawDataSet)
+        // Then draw lines on top of filled zones
+        sets!.lazy
+            .filter { ds in ds.isVisible && !ds.isDrawFilledEnabled }
             .forEach(drawDataSet)
     }
     
@@ -176,13 +181,16 @@ open class LineChartRenderer: LineRadarRenderer
             drawCubicFill(context: context, dataSet: dataSet, spline: fillPath!, matrix: valueToPixelMatrix, bounds: _xBounds)
         }
 
-        if dataSet.isDrawLineWithGradientEnabled
+        if dataSet.lineWidth > 0
         {
-            drawGradientLine(context: context, dataSet: dataSet, spline: cubicPath, matrix: valueToPixelMatrix)
-        }
-        else
-        {
-            drawLine(context: context, spline: cubicPath, drawingColor: drawingColor)
+            if dataSet.isDrawLineWithGradientEnabled
+            {
+                drawGradientLine(context: context, dataSet: dataSet, spline: cubicPath, matrix: valueToPixelMatrix)
+            }
+            else
+            {
+                drawLine(context: context, spline: cubicPath, drawingColor: drawingColor)
+            }
         }
     }
     
