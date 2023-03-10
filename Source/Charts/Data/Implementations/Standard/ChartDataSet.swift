@@ -110,10 +110,20 @@ open class ChartDataSet: ChartBaseDataSet
     }
     
     private func calcMinMaxY(fromX: Double, toX: Double, entries: [ChartDataEntry]) {
-        if entries.count == 1 {
-            let firstEntry = entries[0]
-            if firstEntry.x < fromX || firstEntry.x > toX {
-                return
+        
+        // Ignore some data
+        if label == "data" {
+            if entries.count == 1 {
+                let firstEntry = entries[0]
+                if firstEntry.x < fromX || firstEntry.x > toX {
+                    // Ignore single entries outside visible viewport
+                    return;
+                }
+            } else {
+                // Ignore "data" data set if it has more than one measure
+                // since it will be handled more properly with smoothed data set
+                // by avoiding straight line equations between 2 very distant points
+                return;
             }
         }
 

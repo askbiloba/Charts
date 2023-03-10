@@ -28,6 +28,9 @@ open class BarLineChartViewBase: ChartViewBase, BarLineScatterCandleBubbleChartD
     /// flag that indicates if auto scaling on the y axis is enabled
     private var _autoScaleMinMaxEnabled = false
     
+    /// flag that indicates the minimum visible range if auto scaling on the y axis is enabled
+    private var _autoScaleMinRange: Double? = nil
+    
     private var _pinchZoomEnabled = false
     private var _doubleTapToZoomEnabled = true
     private var _dragXEnabled = true
@@ -310,14 +313,32 @@ open class BarLineChartViewBase: ChartViewBase, BarLineScatterCandleBubbleChartD
         
         // calculate axis range (min / max) according to provided data
         
-        if leftAxis.isEnabled
-        {
-            leftAxis.calculate(min: data.getYMin(axis: .left), max: data.getYMax(axis: .left))
+        if leftAxis.isEnabled {
+            var yMin = data.getYMin(axis: .left)
+            var yMax = data.getYMax(axis: .left)
+            if let minRange = _autoScaleMinRange {
+                let range = yMax - yMin
+                if range < minRange {
+                    let margin = (minRange - range) / 2.0
+                    yMin -= margin
+                    yMax += margin
+                }
+            }
+            leftAxis.calculate(min: yMin, max: yMax)
         }
-        
-        if rightAxis.isEnabled
-        {
-            rightAxis.calculate(min: data.getYMin(axis: .right), max: data.getYMax(axis: .right))
+
+        if rightAxis.isEnabled {
+            var yMin = data.getYMin(axis: .right)
+            var yMax = data.getYMax(axis: .right)
+            if let minRange = _autoScaleMinRange {
+                let range = yMax - yMin
+                if range < minRange {
+                    let margin = (minRange - range) / 2.0
+                    yMin -= margin
+                    yMax += margin
+                }
+            }
+            rightAxis.calculate(min: yMin, max: yMax)
         }
         
         calculateOffsets()
@@ -1820,6 +1841,12 @@ open class BarLineChartViewBase: ChartViewBase, BarLineScatterCandleBubbleChartD
     {
         get { return _autoScaleMinMaxEnabled }
         set { _autoScaleMinMaxEnabled = newValue }
+    }
+    
+    /// Flag that indicates the minimum visible y range if auto scaling on the y axis is enabled.
+    open var autoScaleMinRange: Double? {
+        get { return _autoScaleMinRange }
+        set { _autoScaleMinRange = newValue }
     }
     
     /// **default**: false
